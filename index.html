@@ -237,10 +237,10 @@
   </footer>
 
   <script>
-    // Inisialisasi Supabase Backend Engine
-    const SUPABASE_URL = 'https://qrvfiuodluqbnszgoefv.supabase.co'; // Ganti dengan URL Supabase Anda
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydmZpdW9kbHVxYm5zemdvZWZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzMTc0MDEsImV4cCI6MjEwMzg5MzQwMX0.CJgI7tf1oxfJC72rK3eCyT_MxugSJtvdHOdYSaiszeg'; // Ganti dengan Anon Key Supabase Anda
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Inisialisasi Supabase Backend Engine (Menggunakan nama 'supabaseClient' untuk menghindari bentrokan variabel CDN global)
+    const SUPABASE_URL = 'https://qrvfiuodluqbnszgoefv.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFydmZpdW9kbHVxYm5zemdvZWZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzMTc0MDEsImV4cCI6MjEwMzg5MzQwMX0.CJgI7tf1oxfJC72rK3eCyT_MxugSJtvdHOdYSaiszeg';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const urlParams = new URLSearchParams(window.location.search);
     const mode = urlParams.get('mode');
@@ -349,7 +349,7 @@
     }
 
     async function fetchMenuData() {
-      const { data, error } = await supabase.from('menu_items').select('*').order('created_at', { ascending: true });
+      const { data, error } = await supabaseClient.from('menu_items').select('*').order('created_at', { ascending: true });
       if (!error && data) {
         globalMenuItems = data.map(item => ({
           id: item.id,
@@ -370,7 +370,7 @@
     }
 
     async function fetchOrdersData(checkSound = false) {
-      const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: true });
+      const { data, error } = await supabaseClient.from('orders').select('*').order('created_at', { ascending: true });
       if (!error && data) {
         cachedOrders = data;
         if (mode === 'kitchen') {
@@ -385,7 +385,7 @@
 
     function initAppMode() {
       // Setup realtime listener Supabase
-      supabase.channel('public-db-changes')
+      supabaseClient.channel('public-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => {
           fetchMenuData();
         })
@@ -525,7 +525,7 @@
       const name = document.getElementById('customerName').value.trim();
       localStorage.setItem('customer_name', name);
 
-      await supabase.from('orders').insert([{
+      await supabaseClient.from('orders').insert([{
         id: Date.now() + Math.random().toString(36).substr(2, 4),
         customer_name: name,
         item_name: itemName,
@@ -537,12 +537,12 @@
 
     async function cancelOrder(orderId) {
       if (confirm('Batal pesan menu ini?')) {
-        await supabase.from('orders').delete().eq('id', orderId);
+        await supabaseClient.from('orders').delete().eq('id', orderId);
       }
     }
 
     async function changeOrderStatus(orderId, newStatus) {
-      await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
+      await supabaseClient.from('orders').update({ status: newStatus }).eq('id', orderId);
     }
 
     function loadTableHistory() {
@@ -664,14 +664,14 @@
       if (!name) return alert('Nama menu tidak boleh kosong!');
 
       if (id) {
-        await supabase.from('menu_items').update({
+        await supabaseClient.from('menu_items').update({
           name: name,
           type: type,
           has_temperature: hasTemperature,
           has_sugar: hasSugar
         }).eq('id', id);
       } else {
-        await supabase.from('menu_items').insert([{
+        await supabaseClient.from('menu_items').insert([{
           id: Date.now().toString(),
           name: name,
           type: type || 'beverage',
@@ -700,13 +700,13 @@
     async function toggleSoldOutAdmin(id) {
       const menu = globalMenuItems.find(m => m.id === id);
       if (menu) {
-        await supabase.from('menu_items').update({ is_sold_out: !menu.isSoldOut }).eq('id', id);
+        await supabaseClient.from('menu_items').update({ is_sold_out: !menu.isSoldOut }).eq('id', id);
       }
     }
 
     async function deleteMenuAdmin(id) {
       if (confirm('Apakah Anda yakin ingin menghapus menu ini?')) {
-        await supabase.from('menu_items').delete().eq('id', id);
+        await supabaseClient.from('menu_items').delete().eq('id', id);
       }
     }
 
