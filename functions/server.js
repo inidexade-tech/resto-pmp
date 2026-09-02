@@ -37,6 +37,7 @@ let menuItems = [
 let orders = [];
 
 function getBaseMenuName(fullName) {
+  if (!fullName) return '';
   return fullName.split(' (')[0].replace(/^\d+\.\s*/, '');
 }
 
@@ -64,20 +65,39 @@ function calculateMenuStats() {
   };
 }
 
-// Endpoint Rest API
-router.get('/orders', (req, res) => { res.json(orders); });
-router.get('/menu', (req, res) => { res.json(menuItems); });
-router.get('/menu-stats', (req, res) => { res.json(calculateMenuStats()); });
+// REST API Endpoints
+router.get('/orders', (req, res) => { 
+  res.json(orders); 
+});
+
+router.get('/menu', (req, res) => { 
+  res.json(menuItems); 
+});
+
+router.get('/menu-stats', (req, res) => { 
+  res.json(calculateMenuStats()); 
+});
 
 router.post('/orders', (req, res) => {
-  const newOrder = { ...req.body, status: 'PENDING' };
+  const { customer_name, item_name, note, table_number } = req.body;
+
+  const newOrder = {
+    id: String(Date.now() + Math.floor(Math.random() * 1000)),
+    customer_name: customer_name || 'Tanpa Nama',
+    item_name: item_name || 'Pesanan Tidak Diketahui',
+    note: note || '',
+    table_number: table_number || '-',
+    status: 'PENDING',
+    created_at: new Date().toISOString()
+  };
+
   orders.push(newOrder);
   res.status(201).json(newOrder);
 });
 
 router.post('/orders/status', (req, res) => {
   const { id, status } = req.body;
-  const order = orders.find(o => o.id === id);
+  const order = orders.find(o => String(o.id) === String(id));
   if (order) {
     order.status = status;
   }
@@ -86,7 +106,13 @@ router.post('/orders/status', (req, res) => {
 
 router.delete('/orders/:id', (req, res) => {
   const { id } = req.params;
-  orders = orders.filter(o => o.id !== id);
+  orders = orders.filter(o => String(o.id) !== String(id));
+  res.json({ success: true, orders });
+});
+
+// Endpoint pembersihan data error (Opsional)
+router.post('/orders/clear-invalid', (req, res) => {
+  orders = orders.filter(o => o.customer_name && o.customer_name !== 'undefined');
   res.json({ success: true, orders });
 });
 
