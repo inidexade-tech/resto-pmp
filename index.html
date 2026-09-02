@@ -342,8 +342,14 @@
 
     function fetchCustomerMenus() {
       fetch('/api/menu').then(res => res.json()).then(menus => {
-        globalMenuItems = menus;
-        renderCustomerMenuGrid(menus);
+        // Cek jika data menu/status sold-out ada perubahan sebelum merender ulang HTML
+        const currentDataStr = JSON.stringify(menus);
+        const previousDataStr = JSON.stringify(globalMenuItems);
+
+        if (currentDataStr !== previousDataStr) {
+          globalMenuItems = menus;
+          renderCustomerMenuGrid(menus);
+        }
       });
     }
 
@@ -438,9 +444,11 @@
       }
 
       let options = [];
+      let tempElem = null;
+      let sugarElem = null;
 
       if (tempElemId) {
-        const tempElem = document.getElementById(tempElemId);
+        tempElem = document.getElementById(tempElemId);
         if (tempElem) {
           if (!tempElem.value) {
             return alert('Harap pilih varian Suhu (Original, Ice, atau Hot) terlebih dahulu!');
@@ -450,7 +458,7 @@
       }
 
       if (sugarElemId) {
-        const sugarElem = document.getElementById(sugarElemId);
+        sugarElem = document.getElementById(sugarElemId);
         if (sugarElem) {
           if (!sugarElem.value) {
             return alert('Harap pilih varian Gula (Gula Original, No Sugar, atau Sugar) terlebih dahulu!');
@@ -466,7 +474,11 @@
       const noteValue = noteInput ? noteInput.value.trim() : "";
       
       orderItem(fullName, noteValue);
-      if(noteInput) noteInput.value = "";
+      
+      // Reset pilihan varian hanya setelah tombol pesanan berhasil diproses
+      if (tempElem) tempElem.selectedIndex = 0;
+      if (sugarElem) sugarElem.selectedIndex = 0;
+      if (noteInput) noteInput.value = "";
     }
 
     function orderItem(itemName, note) {
@@ -538,7 +550,6 @@
       fetch('/api/orders')
         .then(res => res.json())
         .then(data => {
-          // Hanya tampilkan pesanan yang memiliki Nama Pemesan yang valid
           const validOrders = data.filter(o => o.customer_name && o.customer_name !== 'undefined');
 
           if (checkSound && validOrders.length > previousOrderCount) playNotificationSound();
@@ -573,7 +584,6 @@
               actionButtons = `<button class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 font-bold text-[10px] cursor-pointer" onclick="changeOrderStatus('${o.id}', 'ON PROCESS')">RE-OPEN</button>`;
             }
 
-            // Formatting Waktu Aman
             let formattedTime = 'Baru Saja';
             if (o.created_at) {
               const parsedDate = new Date(o.created_at);
@@ -601,7 +611,6 @@
         });
     }
 
-    // FUNGSI ADMIN MANAJEMEN MENU
     function renderAdminMenuTable(menus) {
       const tbody = document.getElementById('adminMenuTableBody');
       if (!tbody) return;
