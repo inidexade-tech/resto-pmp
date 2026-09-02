@@ -110,10 +110,40 @@ router.delete('/orders/:id', (req, res) => {
   res.json({ success: true, orders });
 });
 
-// Endpoint pembersihan data error (Opsional)
-router.post('/orders/clear-invalid', (req, res) => {
-  orders = orders.filter(o => o.customer_name && o.customer_name !== 'undefined');
-  res.json({ success: true, orders });
+router.post('/menu', (req, res) => {
+  const { id, name, type, hasTemperature, hasSugar } = req.body;
+  
+  if (id) {
+    // Edit
+    const existing = menuItems.find(m => String(m.id) === String(id));
+    if (existing) {
+      existing.name = name;
+      existing.type = type;
+      existing.hasTemperature = hasTemperature;
+      existing.hasSugar = hasSugar;
+    }
+  } else {
+    // Tambah Baru
+    const newMenu = {
+      id: String(Date.now()),
+      name,
+      type,
+      hasTemperature,
+      hasSugar,
+      isSoldOut: false
+    };
+    menuItems.push(newMenu);
+  }
+  res.json({ success: true, menuItems });
+});
+
+router.post('/menu/toggle-status', (req, res) => {
+  const { id } = req.body;
+  const item = menuItems.find(m => String(m.id) === String(id));
+  if (item) {
+    item.isSoldOut = !item.isSoldOut;
+  }
+  res.json({ success: true, menuItems });
 });
 
 app.use('/.netlify/functions/server/api', router);
