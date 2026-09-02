@@ -1,0 +1,20 @@
+{
+  "name": "resto-server",
+  "version": "1.0.0",
+  "description": "Sistem Pemesanan Minuman D'Pangan",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1",
+    "qrcode": "^1.5.4",
+    "serverless-http": "^3.2.0",
+    "socket.io": "^4.8.3"
+  }
+}
