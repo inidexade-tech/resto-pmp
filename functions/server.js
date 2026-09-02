@@ -44,9 +44,13 @@ function getBaseMenuName(fullName) {
 function calculateMenuStats() {
   const stats = {};
   menuItems.forEach(item => { stats[item.name] = 0; });
+
   orders.forEach(order => {
-    const baseName = getBaseMenuName(order.item_name);
-    if (stats[baseName] !== undefined) { stats[baseName]++; }
+    const itemName = order.item_name || order.itemName || order.item || '';
+    const baseName = getBaseMenuName(itemName);
+    if (stats[baseName] !== undefined) { 
+      stats[baseName]++; 
+    }
   });
 
   const sortedStats = Object.keys(stats).map(name => ({ name, count: stats[name] }));
@@ -65,7 +69,7 @@ function calculateMenuStats() {
   };
 }
 
-// REST API Endpoints
+// Endpoint Rest API
 router.get('/orders', (req, res) => { 
   res.json(orders); 
 });
@@ -78,74 +82,98 @@ router.get('/menu-stats', (req, res) => {
   res.json(calculateMenuStats()); 
 });
 
+// POST: Buat Pesanan Baru (Normalisasi Key & ID String)
 router.post('/orders', (req, res) => {
-  const { customer_name, item_name, note, table_number } = req.body;
+  const body = req.body || {};
+  
+  const customerName = body.customer_name || body.customerName || body.name || 'Pemesan';
+  const itemName = body.item_name || body.itemName || body.item || 'Pesanan';
+  const note = body.note || '';
 
   const newOrder = {
-    id: String(Date.now() + Math.floor(Math.random() * 1000)),
-    customer_name: customer_name || 'Tanpa Nama',
-    item_name: item_name || 'Pesanan Tidak Diketahui',
-    note: note || '',
-    table_number: table_number || '-',
+    id: String(body.id || Date.now()),
+    customer_name: customerName,
+    name: customerName,
+    customerName: customerName,
+    item_name: itemName,
+    item: itemName,
+    itemName: itemName,
+    note: note,
+    table_number: body.table_number || '-',
     status: 'PENDING',
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    createdAt: new Date().toISOString()
   };
 
   orders.push(newOrder);
   res.status(201).json(newOrder);
 });
 
+// POST: Ubah Status Pesanan (Perbaikan Perbandingan ID String)
 router.post('/orders/status', (req, res) => {
-  const { id, status } = req.body;
+  const { id, status } = req.body || {};
   const order = orders.find(o => String(o.id) === String(id));
+  
   if (order) {
     order.status = status;
+    return res.json({ success: true, order, orders });
   }
-  res.json({ success: true, orders });
+  
+  res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan', orders });
 });
 
+// DELETE: Pembatalan Pesanan
 router.delete('/orders/:id', (req, res) => {
   const { id } = req.params;
   orders = orders.filter(o => String(o.id) !== String(id));
   res.json({ success: true, orders });
 });
 
+// POST: Tambah/Edit Menu (Admin Panel)
 router.post('/menu', (req, res) => {
-  const { id, name, type, hasTemperature, hasSugar } = req.body;
+  const { id, name, type, hasTemperature, hasSugar } = req.body || {};
   
   if (id) {
-    // Edit
-    const existing = menuItems.find(m => String(m.id) === String(id));
-    if (existing) {
-      existing.name = name;
-      existing.type = type;
-      existing.hasTemperature = hasTemperature;
-      existing.hasSugar = hasSugar;
+    const index = menuItems.findIndex(m => String(m.id) === String(id));
+    if (index !== -1) {
+      menuItems[index] = {
+        ...menuItems[index],
+        name,
+        type: type || 'beverage',
+        hasTemperature: Boolean(hasTemperature),
+        hasSugar: Boolean(hasSugar)
+      };
+      return res.json({ success: true, menu: menuItems[index] });
     }
-  } else {
-    // Tambah Baru
-    const newMenu = {
-      id: String(Date.now()),
-      name,
-      type,
-      hasTemperature,
-      hasSugar,
-      isSoldOut: false
-    };
-    menuItems.push(newMenu);
   }
-  res.json({ success: true, menuItems });
+
+  const newMenu = {
+    id: String(Date.now()),
+    name,
+    type: type || 'beverage',
+    hasTemperature: Boolean(hasTemperature),
+    hasSugar: Boolean(hasSugar),
+    isSoldOut: false
+  };
+
+  menuItems.push(newMenu);
+  res.status(201).json({ success: true, menu: newMenu });
 });
 
+// POST: Toggle Status Sold Out Menu
 router.post('/menu/toggle-status', (req, res) => {
-  const { id } = req.body;
-  const item = menuItems.find(m => String(m.id) === String(id));
-  if (item) {
-    item.isSoldOut = !item.isSoldOut;
+  const { id } = req.body || {};
+  const menu = menuItems.find(m => String(m.id) === String(id));
+  
+  if (menu) {
+    menu.isSoldOut = !menu.isSoldOut;
+    return res.json({ success: true, isSoldOut: menu.isSoldOut });
   }
-  res.json({ success: true, menuItems });
+  
+  res.status(404).json({ success: false, message: 'Menu tidak ditemukan' });
 });
 
+// Route Routing Netlify & Standalone
 app.use('/.netlify/functions/server/api', router);
 app.use('/api', router);
 
