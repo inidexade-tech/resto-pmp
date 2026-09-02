@@ -35,7 +35,7 @@
         <input type="password" id="pinInput" maxlength="6" placeholder="Masukkan PIN" 
                class="w-full text-center tracking-widest text-lg px-4 py-2.5 rounded-xl bg-slate-800 border border-emerald-500/30 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
         <p id="authError" class="text-[11px] text-red-400 font-semibold" style="display:none;">PIN Salah! Silakan coba lagi.</p>
-        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition">
+        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
           Masuk
         </button>
       </form>
@@ -115,7 +115,7 @@
               <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
               <span id="statusText">Server Aktif</span>
             </div>
-            <button onclick="logoutAuth()" class="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 text-xs font-bold transition">Logout</button>
+            <button onclick="logoutAuth()" class="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 text-xs font-bold transition cursor-pointer">Logout</button>
           </div>
         </div>
 
@@ -168,7 +168,7 @@
               <p class="text-xs text-slate-400 mt-0.5">Pengaturan Ketersediaan dan Detail Menu</p>
             </div>
           </div>
-          <button onclick="logoutAuth()" class="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 text-xs font-bold transition">Logout</button>
+          <button onclick="logoutAuth()" class="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 text-xs font-bold transition cursor-pointer">Logout</button>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -214,10 +214,10 @@
               </select>
             </div>
             <div class="flex gap-2">
-              <button id="btnAdminSubmit" onclick="saveMenuAdmin()" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition">
+              <button id="btnAdminSubmit" onclick="saveMenuAdmin()" class="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
                 Simpan Menu
               </button>
-              <button id="btnAdminCancelEdit" onclick="resetAdminForm()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold px-3 py-2.5 rounded-xl text-xs transition" style="display:none;">
+              <button id="btnAdminCancelEdit" onclick="resetAdminForm()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold px-3 py-2.5 rounded-xl text-xs transition cursor-pointer" style="display:none;">
                 Batal
               </button>
             </div>
@@ -324,14 +324,8 @@
         setInterval(() => fetchKitchenOrders(true), 3000);
       } else if (mode === 'admin') {
         document.getElementById('adminApp').style.display = 'block';
-        
-        fetch('/api/menu').then(res => res.json()).then(menus => {
-          globalMenuItems = menus;
-          renderAdminMenuTable(menus);
-        });
-
-        fetch('/api/menu-stats').then(res => res.json()).then(updateStatsDisplay);
-
+        fetchAdminMenus();
+        setInterval(fetchAdminMenus, 5000);
       } else {
         document.getElementById('customerApp').style.display = 'block';
         
@@ -341,11 +335,24 @@
         loadTableHistory();
         setInterval(loadTableHistory, 3000);
         
-        fetch('/api/menu').then(res => res.json()).then(menus => {
-          globalMenuItems = menus;
-          renderCustomerMenuGrid(menus);
-        });
+        fetchCustomerMenus();
+        setInterval(fetchCustomerMenus, 5000);
       }
+    }
+
+    function fetchCustomerMenus() {
+      fetch('/api/menu').then(res => res.json()).then(menus => {
+        globalMenuItems = menus;
+        renderCustomerMenuGrid(menus);
+      });
+    }
+
+    function fetchAdminMenus() {
+      fetch('/api/menu').then(res => res.json()).then(menus => {
+        globalMenuItems = menus;
+        renderAdminMenuTable(menus);
+      });
+      fetch('/api/menu-stats').then(res => res.json()).then(updateStatsDisplay);
     }
 
     function updateStatsDisplay(stats) {
@@ -365,7 +372,7 @@
             <h4 class="font-bold text-sm text-slate-100">${index + 1}. ${menu.name}</h4>
             <button ${isSold ? 'disabled' : ''} 
                     onclick="orderWithCustomOptions('${index + 1}. ${menu.name}', ${menu.hasTemperature ? `'opt-temp-${menu.id}'` : 'null'}, ${menu.hasSugar ? `'opt-sugar-${menu.id}'` : 'null'}, '${menu.id}')"
-                    class="px-3.5 py-1.5 rounded-xl font-bold text-xs transition ${isSold ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 shadow-md shadow-emerald-500/20 active:scale-95'}">
+                    class="px-3.5 py-1.5 rounded-xl font-bold text-xs transition ${isSold ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer'}">
               ${isSold ? 'Habis' : '+ Pesan'}
             </button>
           </div>
@@ -470,12 +477,10 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: Date.now() + Math.random().toString(36).substr(2, 4),
-          table_number: "-", 
           customer_name: name,
           item_name: itemName,
           note: note,
-          created_at: new Date()
+          table_number: "-"
         })
       }).then(() => loadTableHistory());
     }
@@ -491,17 +496,21 @@
       fetch('/api/orders/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: orderId, status: newStatus })
-      }).then(() => fetchKitchenOrders());
+        body: JSON.stringify({ id: String(orderId), status: newStatus })
+      })
+      .then(res => res.json())
+      .then(() => fetchKitchenOrders());
     }
 
     function loadTableHistory() {
-      const currentName = document.getElementById('customerName').value.trim().toLowerCase();
+      const currentName = (document.getElementById('customerName')?.value || '').trim().toLowerCase();
       fetch('/api/orders')
         .then(res => res.json())
         .then(data => {
           const list = document.getElementById('tableHistoryList');
-          const myOrders = data.filter(o => currentName && o.customer_name.toLowerCase() === currentName);
+          if (!list) return;
+
+          const myOrders = data.filter(o => currentName && o.customer_name && o.customer_name.toLowerCase() === currentName);
 
           if (myOrders.length === 0) {
             list.innerHTML = '<p class="text-slate-500 italic text-xs">Belum ada pesanan aktif atas nama Anda.</p>';
@@ -510,7 +519,7 @@
           
           let html = '';
           myOrders.forEach(o => {
-            let cancelBtn = (o.status === 'PENDING') ? `<button class="px-2 py-0.5 rounded bg-red-950/60 text-red-300 border border-red-500/30 text-[10px] font-bold" onclick="cancelOrder('${o.id}')">Batal</button>` : '';
+            let cancelBtn = (o.status === 'PENDING') ? `<button class="px-2 py-0.5 rounded bg-red-950/60 text-red-300 border border-red-500/30 text-[10px] font-bold cursor-pointer" onclick="cancelOrder('${o.id}')">Batal</button>` : '';
             let statusLabel = o.status === 'ON PROCESS' ? ' <span class="text-amber-400 font-bold">[Sedang Dibuat]</span>' : (o.status === 'DONE' ? ' <span class="text-emerald-400 font-bold">[Selesai]</span>' : '');
             let noteHtml = o.note ? `<br><span class="text-[10px] text-amber-300 italic">📝 Catatan: "${o.note}"</span>` : '';
             
@@ -529,15 +538,20 @@
       fetch('/api/orders')
         .then(res => res.json())
         .then(data => {
-          if (checkSound && data.length > previousOrderCount) playNotificationSound();
-          previousOrderCount = data.length;
+          // Hanya tampilkan pesanan yang memiliki Nama Pemesan yang valid
+          const validOrders = data.filter(o => o.customer_name && o.customer_name !== 'undefined');
+
+          if (checkSound && validOrders.length > previousOrderCount) playNotificationSound();
+          previousOrderCount = validOrders.length;
           
           let pendingCount = 0, processCount = 0, doneCount = 0;
 
           const tbody = document.getElementById('kitchenOrders');
+          if (!tbody) return;
+
           let html = '';
           
-          data.slice().reverse().forEach(o => {
+          validOrders.slice().reverse().forEach(o => {
             const currentStatus = o.status || 'PENDING';
             let rowClass = currentStatus === 'DONE' ? 'opacity-40 bg-slate-900/40' : '';
             let statusBadge = '', actionButtons = '';
@@ -546,23 +560,32 @@
               pendingCount++;
               statusBadge = '<span class="px-2.5 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-bold text-[10px]">BARU</span>';
               actionButtons = `<div class="flex gap-1.5">
-                                <button class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-[10px] hover:bg-amber-500/30" onclick="changeOrderStatus('${o.id}', 'ON PROCESS')">PROSES</button>
-                                <button class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold text-[10px] hover:bg-emerald-500/30" onclick="changeOrderStatus('${o.id}', 'DONE')">SELESAI</button>
+                                <button class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold text-[10px] hover:bg-amber-500/30 cursor-pointer" onclick="changeOrderStatus('${o.id}', 'ON PROCESS')">PROSES</button>
+                                <button class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold text-[10px] hover:bg-emerald-500/30 cursor-pointer" onclick="changeOrderStatus('${o.id}', 'DONE')">SELESAI</button>
                               </div>`;
             } else if (currentStatus === 'ON PROCESS') {
               processCount++;
               statusBadge = '<span class="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold text-[10px]">PROSES</span>';
-              actionButtons = `<button class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold text-[10px] hover:bg-emerald-500/30" onclick="changeOrderStatus('${o.id}', 'DONE')">SELESAI</button>`;
+              actionButtons = `<button class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold text-[10px] hover:bg-emerald-500/30 cursor-pointer" onclick="changeOrderStatus('${o.id}', 'DONE')">SELESAI</button>`;
             } else if (currentStatus === 'DONE') {
               doneCount++;
               statusBadge = '<span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold text-[10px] line-through">SELESAI</span>';
-              actionButtons = `<button class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 font-bold text-[10px]" onclick="changeOrderStatus('${o.id}', 'ON PROCESS')">RE-OPEN</button>`;
+              actionButtons = `<button class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 font-bold text-[10px] cursor-pointer" onclick="changeOrderStatus('${o.id}', 'ON PROCESS')">RE-OPEN</button>`;
+            }
+
+            // Formatting Waktu Aman
+            let formattedTime = 'Baru Saja';
+            if (o.created_at) {
+              const parsedDate = new Date(o.created_at);
+              if (!isNaN(parsedDate)) {
+                formattedTime = parsedDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+              }
             }
 
             let noteHtml = o.note ? `<br><span class="inline-block mt-1 px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px]">📝 ${o.note}</span>` : '';
 
             html += `<tr class="${rowClass} hover:bg-slate-800/50 transition">
-                      <td class="p-3.5 text-slate-400">${new Date(o.created_at).toLocaleTimeString('id-ID')}</td>
+                      <td class="p-3.5 text-slate-400">${formattedTime}</td>
                       <td class="p-3.5 font-bold text-slate-100">${o.customer_name}</td>
                       <td class="p-3.5 font-bold text-slate-200">${o.item_name} ${noteHtml}</td>
                       <td class="p-3.5">${statusBadge}</td>
@@ -570,7 +593,7 @@
                     </tr>`;
           });
           
-          tbody.innerHTML = html;
+          tbody.innerHTML = html || '<tr><td colspan="5" class="p-4 text-center text-slate-500 text-xs">Belum ada pesanan aktif.</td></tr>';
 
           if (document.getElementById('countPending')) document.getElementById('countPending').innerText = pendingCount;
           if (document.getElementById('countProcess')) document.getElementById('countProcess').innerText = processCount;
@@ -578,8 +601,10 @@
         });
     }
 
+    // FUNGSI ADMIN MANAJEMEN MENU
     function renderAdminMenuTable(menus) {
       const tbody = document.getElementById('adminMenuTableBody');
+      if (!tbody) return;
       let html = '';
       menus.forEach((menu, index) => {
         const soldOutStatus = menu.isSoldOut ? '<span class="text-red-400 font-bold">Sold Out</span>' : '<span class="text-emerald-400 font-bold">Tersedia</span>';
@@ -593,13 +618,76 @@
             <td class="p-3.5">${menu.hasTemperature ? '✅ Ya' : '❌ Tidak'}</td>
             <td class="p-3.5">${menu.hasSugar ? '✅ Ya' : '❌ Tidak'}</td>
             <td class="p-3.5">${soldOutStatus}</td>
-            <td class="p-3.5">
-              <span class="text-xs text-slate-500">Read-Only</span>
+            <td class="p-3.5 flex items-center gap-2">
+              <button onclick="toggleSoldOut('${menu.id}')" class="px-2.5 py-1 rounded-lg text-xs font-bold transition ${menu.isSoldOut ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'}">
+                ${menu.isSoldOut ? 'Set Tersedia' : 'Set Sold Out'}
+              </button>
+              <button onclick="editMenu('${menu.id}')" class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold">
+                Edit
+              </button>
             </td>
           </tr>
         `;
       });
       tbody.innerHTML = html;
+    }
+
+    function saveMenuAdmin() {
+      const id = document.getElementById('adminMenuId').value;
+      const name = document.getElementById('adminMenuName').value.trim();
+      const type = document.getElementById('adminMenuType').value;
+      const hasTemperature = document.getElementById('adminMenuTemp').value === 'true';
+      const hasSugar = document.getElementById('adminMenuSugar').value === 'true';
+
+      if (!name) return alert('Nama menu tidak boleh kosong!');
+
+      fetch('/api/menu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name, type, hasTemperature, hasSugar })
+      })
+      .then(res => res.json())
+      .then(() => {
+        resetAdminForm();
+        fetchAdminMenus();
+      });
+    }
+
+    function toggleSoldOut(id) {
+      fetch('/api/menu/toggle-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      })
+      .then(res => res.json())
+      .then(() => fetchAdminMenus());
+    }
+
+    function editMenu(id) {
+      const item = globalMenuItems.find(m => String(m.id) === String(id));
+      if (!item) return;
+
+      document.getElementById('adminMenuId').value = item.id;
+      document.getElementById('adminMenuName').value = item.name;
+      document.getElementById('adminMenuType').value = item.type;
+      document.getElementById('adminMenuTemp').value = item.hasTemperature ? 'true' : 'false';
+      document.getElementById('adminMenuSugar').value = item.hasSugar ? 'true' : 'false';
+
+      document.getElementById('formAdminTitle').innerText = 'Edit Menu: ' + item.name;
+      document.getElementById('btnAdminSubmit').innerText = 'Update Menu';
+      document.getElementById('btnAdminCancelEdit').style.display = 'inline-block';
+    }
+
+    function resetAdminForm() {
+      document.getElementById('adminMenuId').value = '';
+      document.getElementById('adminMenuName').value = '';
+      document.getElementById('adminMenuType').value = 'beverage';
+      document.getElementById('adminMenuTemp').value = 'true';
+      document.getElementById('adminMenuSugar').value = 'true';
+
+      document.getElementById('formAdminTitle').innerText = 'Tambah Menu Baru';
+      document.getElementById('btnAdminSubmit').innerText = 'Simpan Menu';
+      document.getElementById('btnAdminCancelEdit').style.display = 'none';
     }
   </script>
 </body>
