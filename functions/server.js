@@ -69,47 +69,42 @@ function calculateMenuStats() {
   };
 }
 
-// Endpoint Rest API
-router.get('/orders', (req, res) => { 
-  res.json(orders); 
-});
+// REST API Endpoints
+router.get('/orders', (req, res) => { res.json(orders); });
+router.get('/menu', (req, res) => { res.json(menuItems); });
+router.get('/menu-stats', (req, res) => { res.json(calculateMenuStats()); });
 
-router.get('/menu', (req, res) => { 
-  res.json(menuItems); 
-});
-
-router.get('/menu-stats', (req, res) => { 
-  res.json(calculateMenuStats()); 
-});
-
-// POST: Buat Pesanan Baru (Normalisasi Key & ID String)
+// POST: Pesanan Baru
 router.post('/orders', (req, res) => {
   const body = req.body || {};
   
-  const customerName = body.customer_name || body.customerName || body.name || 'Pemesan';
-  const itemName = body.item_name || body.itemName || body.item || 'Pesanan';
+  const customerName = body.customer_name || body.customerName || body.name;
+  const itemName = body.item_name || body.itemName || body.item;
   const note = body.note || '';
+
+  if (!customerName || !itemName) {
+    return res.status(400).json({ error: 'Nama pemesan dan menu wajib diisi.' });
+  }
 
   const newOrder = {
     id: String(body.id || Date.now()),
     customer_name: customerName,
-    name: customerName,
     customerName: customerName,
+    name: customerName,
     item_name: itemName,
-    item: itemName,
     itemName: itemName,
+    item: itemName,
     note: note,
     table_number: body.table_number || '-',
     status: 'PENDING',
-    created_at: new Date().toISOString(),
-    createdAt: new Date().toISOString()
+    created_at: new Date().toISOString()
   };
 
   orders.push(newOrder);
   res.status(201).json(newOrder);
 });
 
-// POST: Ubah Status Pesanan (Perbaikan Perbandingan ID String)
+// POST: Ubah Status Pesanan
 router.post('/orders/status', (req, res) => {
   const { id, status } = req.body || {};
   const order = orders.find(o => String(o.id) === String(id));
@@ -122,14 +117,14 @@ router.post('/orders/status', (req, res) => {
   res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan', orders });
 });
 
-// DELETE: Pembatalan Pesanan
+// DELETE: Hapus Pesanan
 router.delete('/orders/:id', (req, res) => {
   const { id } = req.params;
   orders = orders.filter(o => String(o.id) !== String(id));
   res.json({ success: true, orders });
 });
 
-// POST: Tambah/Edit Menu (Admin Panel)
+// POST: Tambah / Edit Menu
 router.post('/menu', (req, res) => {
   const { id, name, type, hasTemperature, hasSugar } = req.body || {};
   
@@ -160,7 +155,7 @@ router.post('/menu', (req, res) => {
   res.status(201).json({ success: true, menu: newMenu });
 });
 
-// POST: Toggle Status Sold Out Menu
+// POST: Toggle Status Sold Out
 router.post('/menu/toggle-status', (req, res) => {
   const { id } = req.body || {};
   const menu = menuItems.find(m => String(m.id) === String(id));
@@ -173,7 +168,7 @@ router.post('/menu/toggle-status', (req, res) => {
   res.status(404).json({ success: false, message: 'Menu tidak ditemukan' });
 });
 
-// Route Routing Netlify & Standalone
+// Routing Adapter Netlify & Standalone Server
 app.use('/.netlify/functions/server/api', router);
 app.use('/api', router);
 
