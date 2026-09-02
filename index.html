@@ -342,7 +342,6 @@
 
     function fetchCustomerMenus() {
       fetch('/api/menu').then(res => res.json()).then(menus => {
-        // Cek jika data menu/status sold-out ada perubahan sebelum merender ulang HTML
         const currentDataStr = JSON.stringify(menus);
         const previousDataStr = JSON.stringify(globalMenuItems);
 
@@ -363,8 +362,8 @@
 
     function updateStatsDisplay(stats) {
       if(document.getElementById('topMenuText') && document.getElementById('bottomMenuText')) {
-        document.getElementById('topMenuText').innerText = stats.top;
-        document.getElementById('bottomMenuText').innerText = stats.bottom;
+        document.getElementById('topMenuText').innerText = stats.top || '-';
+        document.getElementById('bottomMenuText').innerText = stats.bottom || '-';
       }
     }
 
@@ -377,7 +376,7 @@
           <div class="flex justify-between items-center mb-3">
             <h4 class="font-bold text-sm text-slate-100">${index + 1}. ${menu.name}</h4>
             <button ${isSold ? 'disabled' : ''} 
-                    onclick="orderWithCustomOptions('${index + 1}. ${menu.name}', ${menu.hasTemperature ? `'opt-temp-${menu.id}'` : 'null'}, ${menu.hasSugar ? `'opt-sugar-${menu.id}'` : 'null'}, '${menu.id}')"
+                    onclick="orderWithCustomOptions('${menu.name}', ${menu.hasTemperature ? `'opt-temp-${menu.id}'` : 'null'}, ${menu.hasSugar ? `'opt-sugar-${menu.id}'` : 'null'}, '${menu.id}')"
                     class="px-3.5 py-1.5 rounded-xl font-bold text-xs transition ${isSold ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer'}">
               ${isSold ? 'Habis' : '+ Pesan'}
             </button>
@@ -451,7 +450,7 @@
         tempElem = document.getElementById(tempElemId);
         if (tempElem) {
           if (!tempElem.value) {
-            return alert('Harap pilih varian Suhu (Original, Ice, atau Hot) terlebih dahulu!');
+            return alert('Harap pilih varian Suhu terlebih dahulu!');
           }
           options.push(tempElem.value);
         }
@@ -461,7 +460,7 @@
         sugarElem = document.getElementById(sugarElemId);
         if (sugarElem) {
           if (!sugarElem.value) {
-            return alert('Harap pilih varian Gula (Gula Original, No Sugar, atau Sugar) terlebih dahulu!');
+            return alert('Harap pilih varian Gula terlebih dahulu!');
           }
           options.push(sugarElem.value);
         }
@@ -473,28 +472,38 @@
       const noteInput = document.getElementById(`note-${menuId}`);
       const noteValue = noteInput ? noteInput.value.trim() : "";
       
-      orderItem(fullName, noteValue);
+      orderItem(customerName, fullName, noteValue);
       
-      // Reset pilihan varian hanya setelah tombol pesanan berhasil diproses
       if (tempElem) tempElem.selectedIndex = 0;
       if (sugarElem) sugarElem.selectedIndex = 0;
       if (noteInput) noteInput.value = "";
     }
 
-    function orderItem(itemName, note) {
-      const name = document.getElementById('customerName').value.trim();
-      localStorage.setItem('customer_name', name);
+    function orderItem(customerName, itemName, note) {
+      localStorage.setItem('customer_name', customerName);
+
+      // Mengirimkan kompatibilitas format (baik nama key customer_name/name maupun item_name/item)
+      const payload = {
+        customer_name: customerName,
+        name: customerName,
+        customerName: customerName,
+        item_name: itemName,
+        item: itemName,
+        itemName: itemName,
+        note: note,
+        table_number: "-"
+      };
 
       fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_name: name,
-          item_name: itemName,
-          note: note,
-          table_number: "-"
-        })
-      }).then(() => loadTableHistory());
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(() => {
+        loadTableHistory();
+      })
+      .catch(err => console.error("Gagal mengirim pesanan:", err));
     }
 
     function cancelOrder(orderId) {
@@ -508,21 +517,27 @@
       fetch('/api/orders/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: String(orderId), status: newStatus })
+        body: JSON.stringify({ id: orderId, status: newStatus })
       })
       .then(res => res.json())
-      .then(() => fetchKitchenOrders());
+      .then(() => fetchKitchenOrders(false))
+      .catch(err => console.error("Gagal mengubah status:", err));
     }
 
     function loadTableHistory() {
       const currentName = (document.getElementById('customerName')?.value || '').trim().toLowerCase();
+      if (!currentName) return;
+
       fetch('/api/orders')
         .then(res => res.json())
         .then(data => {
           const list = document.getElementById('tableHistoryList');
           if (!list) return;
 
-          const myOrders = data.filter(o => currentName && o.customer_name && o.customer_name.toLowerCase() === currentName);
+          const myOrders = data.filter(o => {
+            const nameInOrder = (o.customer_name || o.name || o.customerName || '').toLowerCase();
+            return nameInOrder && nameInOrder === currentName;
+          });
 
           if (myOrders.length === 0) {
             list.innerHTML = '<p class="text-slate-500 italic text-xs">Belum ada pesanan aktif atas nama Anda.</p>';
@@ -531,12 +546,14 @@
           
           let html = '';
           myOrders.forEach(o => {
+            const displayName = o.customer_name || o.name || o.customerName || 'Pemesan';
+            const displayItem = o.item_name || o.item || o.itemName || 'Menu';
             let cancelBtn = (o.status === 'PENDING') ? `<button class="px-2 py-0.5 rounded bg-red-950/60 text-red-300 border border-red-500/30 text-[10px] font-bold cursor-pointer" onclick="cancelOrder('${o.id}')">Batal</button>` : '';
             let statusLabel = o.status === 'ON PROCESS' ? ' <span class="text-amber-400 font-bold">[Sedang Dibuat]</span>' : (o.status === 'DONE' ? ' <span class="text-emerald-400 font-bold">[Selesai]</span>' : '');
             let noteHtml = o.note ? `<br><span class="text-[10px] text-amber-300 italic">📝 Catatan: "${o.note}"</span>` : '';
             
             html += `<div class="flex justify-between items-center py-1.5 border-b border-emerald-900/30">
-                      <div><b>${o.customer_name}</b>: ${o.item_name} ${statusLabel} ${noteHtml}</div>
+                      <div><b>${displayName}</b>: ${displayItem} ${statusLabel} ${noteHtml}</div>
                       ${cancelBtn}
                     </div>`;
           });
@@ -550,9 +567,14 @@
       fetch('/api/orders')
         .then(res => res.json())
         .then(data => {
-          const validOrders = data.filter(o => o.customer_name && o.customer_name !== 'undefined');
+          const validOrders = data.filter(o => {
+            const name = o.customer_name || o.name || o.customerName;
+            return name && name !== 'undefined' && name !== 'Tanpa Nama';
+          });
 
-          if (checkSound && validOrders.length > previousOrderCount) playNotificationSound();
+          if (checkSound && validOrders.length > previousOrderCount) {
+            playNotificationSound();
+          }
           previousOrderCount = validOrders.length;
           
           let pendingCount = 0, processCount = 0, doneCount = 0;
@@ -585,19 +607,22 @@
             }
 
             let formattedTime = 'Baru Saja';
-            if (o.created_at) {
-              const parsedDate = new Date(o.created_at);
+            if (o.created_at || o.createdAt) {
+              const parsedDate = new Date(o.created_at || o.createdAt);
               if (!isNaN(parsedDate)) {
-                formattedTime = parsedDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                formattedTime = parsedDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
               }
             }
+
+            const nameShow = o.customer_name || o.name || o.customerName || 'Pemesan';
+            const itemShow = o.item_name || o.item || o.itemName || 'Menu';
 
             let noteHtml = o.note ? `<br><span class="inline-block mt-1 px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px]">📝 ${o.note}</span>` : '';
 
             html += `<tr class="${rowClass} hover:bg-slate-800/50 transition">
                       <td class="p-3.5 text-slate-400">${formattedTime}</td>
-                      <td class="p-3.5 font-bold text-slate-100">${o.customer_name}</td>
-                      <td class="p-3.5 font-bold text-slate-200">${o.item_name} ${noteHtml}</td>
+                      <td class="p-3.5 font-bold text-slate-100">${nameShow}</td>
+                      <td class="p-3.5 font-bold text-slate-200">${itemShow} ${noteHtml}</td>
                       <td class="p-3.5">${statusBadge}</td>
                       <td class="p-3.5">${actionButtons}</td>
                     </tr>`;
